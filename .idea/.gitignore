@@ -1,0 +1,11 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+.dart_tool/
+.idea/
+macos/
+linux/
+test/
+web/
+windows/
