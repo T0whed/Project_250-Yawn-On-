@@ -4,6 +4,8 @@
 
 .dart_tool
 .idea
+build
+android
 macos
 linux
 test
