@@ -1,5 +1,8 @@
 // screens/signup_page.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:yawn_on/screens/sign_in.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import 'welcome_screen.dart';
@@ -16,10 +19,15 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  // Firebase instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _acceptTerms = false;
   bool _isFormValid = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -66,7 +74,8 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  void _handleSignUp() {
+  // Firebase sign up implementation
+  Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) {
       _showSnackBar('Please fill all fields correctly');
       return;
@@ -77,17 +86,95 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // TODO: Implement actual sign-up logic here
-    // For now, we'll just navigate to welcome screen
-    _showSnackBar('Account created successfully!', isError: false);
-    
-    // Navigate to welcome screen after a short delay
-    Future.delayed(Duration(seconds: 1), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => WelcomeScreen()),
-      );
+    setState(() {
+      _isLoading = true;
     });
+
+    try {
+      // Create user with email and password
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      // Update user profile with display name
+      await userCredential.user?.updateDisplayName(_fullNameController.text.trim());
+
+      // Store additional user data in Firestore
+      await _createUserDocument(userCredential.user!);
+
+      // Send email verification
+      await userCredential.user?.sendEmailVerification();
+
+      _showSnackBar(
+        'Account created successfully! Please check your email for verification.',
+        isError: false,
+      );
+
+      // Navigate to welcome screen after a short delay
+      Future.delayed(Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => WelcomeScreen()),
+          );
+        }
+      });
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getFirebaseErrorMessage(e.code);
+      _showSnackBar(errorMessage);
+    } catch (e) {
+      _showSnackBar('An unexpected error occurred. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Create user document in Firestore
+  Future<void> _createUserDocument(User user) async {
+    try {
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'fullName': _fullNameController.text.trim(),
+        'email': user.email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'emailVerified': false,
+        'profileCompleted': false,
+        // Add sleep tracking related fields
+        'sleepGoal': 8, // Default 8 hours
+        'bedtimeReminder': true,
+        'wakeupReminder': true,
+      });
+    } catch (e) {
+      print('Error creating user document: $e');
+      // Note: We don't throw here to avoid disrupting the sign-up flow
+      // The user account is still created successfully
+    }
+  }
+
+  // Convert Firebase error codes to user-friendly messages
+  String _getFirebaseErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'weak-password':
+        return 'The password provided is too weak. Please use a stronger password.';
+      case 'email-already-in-use':
+        return 'An account already exists for this email address.';
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'operation-not-allowed':
+        return 'Email/password accounts are not enabled. Please contact support.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return 'An error occurred during sign up. Please try again.';
+    }
   }
 
   @override
@@ -185,6 +272,7 @@ class _SignUpPageState extends State<SignUpPage> {
           controller: _fullNameController,
           hintText: 'Full Name',
           prefixIcon: Icons.person_outline,
+          enabled: !_isLoading,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please enter your full name';
@@ -203,6 +291,7 @@ class _SignUpPageState extends State<SignUpPage> {
           hintText: 'Email Address',
           prefixIcon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
+          enabled: !_isLoading,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please enter your email';
@@ -221,12 +310,13 @@ class _SignUpPageState extends State<SignUpPage> {
           hintText: 'Password',
           prefixIcon: Icons.lock_outline,
           obscureText: !_isPasswordVisible,
+          enabled: !_isLoading,
           suffixIcon: IconButton(
             icon: Icon(
               _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
               color: Colors.grey[600],
             ),
-            onPressed: () {
+            onPressed: _isLoading ? null : () {
               setState(() {
                 _isPasswordVisible = !_isPasswordVisible;
               });
@@ -239,6 +329,10 @@ class _SignUpPageState extends State<SignUpPage> {
             if (value.length < 6) {
               return 'Password must be at least 6 characters';
             }
+            // Add password strength validation
+            if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)').hasMatch(value)) {
+              return 'Password must contain at least one letter and one number';
+            }
             return null;
           },
         ),
@@ -250,12 +344,13 @@ class _SignUpPageState extends State<SignUpPage> {
           hintText: 'Confirm Password',
           prefixIcon: Icons.lock_outline,
           obscureText: !_isConfirmPasswordVisible,
+          enabled: !_isLoading,
           suffixIcon: IconButton(
             icon: Icon(
               _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
               color: Colors.grey[600],
             ),
-            onPressed: () {
+            onPressed: _isLoading ? null : () {
               setState(() {
                 _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
               });
@@ -280,7 +375,7 @@ class _SignUpPageState extends State<SignUpPage> {
       children: [
         Checkbox(
           value: _acceptTerms,
-          onChanged: (value) {
+          onChanged: _isLoading ? null : (value) {
             setState(() {
               _acceptTerms = value ?? false;
             });
@@ -290,7 +385,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         Expanded(
           child: GestureDetector(
-            onTap: () {
+            onTap: _isLoading ? null : () {
               setState(() {
                 _acceptTerms = !_acceptTerms;
               });
@@ -330,39 +425,57 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Widget _buildSignUpButton() {
     return CustomButton(
-      text: 'Create Account',
-      onPressed: _isFormValid ? _handleSignUp : null,
-      isEnabled: _isFormValid,
+      text: _isLoading ? 'Creating Account...' : 'Create Account',
+      onPressed: (_isFormValid && !_isLoading) ? _handleSignUp : null,
+      isEnabled: _isFormValid && !_isLoading,
+      child: _isLoading 
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Creating Account...'),
+            ],
+          )
+        : null,
     );
   }
 
   Widget _buildSignInLink() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Already have an account? ',
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Text(
+        'Already have an account? ',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[600],
+        ),
+      ),
+      GestureDetector(
+        onTap: _isLoading ? null : () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SignInPage()),
+          );
+        },
+        child: Text(
+          'Sign In',
           style: TextStyle(
             fontSize: 14,
-            color: Colors.grey[600],
+            color: _isLoading ? Colors.grey[400] : Color(0xFF1E3A8A),
+            fontWeight: FontWeight.w600,
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            // TODO: Navigate to sign in page
-            Navigator.pop(context);
-          },
-          child: Text(
-            'Sign In',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF1E3A8A),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
-
+}

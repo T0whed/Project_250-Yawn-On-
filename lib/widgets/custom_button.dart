@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
+  final Widget? child;
   final VoidCallback? onPressed;
   final bool isEnabled;
   final bool isLoading;
@@ -10,6 +11,7 @@ class CustomButton extends StatelessWidget {
   const CustomButton({
     Key? key,
     required this.text,
+    this.child,
     this.onPressed,
     this.isEnabled = true,
     this.isLoading = false,
