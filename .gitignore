@@ -1,0 +1,18 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+.dart_tool
+.idea
+build
+android
+macos
+linux
+test
+web
+windows
+lib/pages
+lib/widgets/QuickActions.dart
+lib/widgets/homepage/SleepSummaryCard.dart
+lib/widgets/homepage/SleepTimelineVisualization.dart
+lib/widgets/homepage/SleepTip.dart
