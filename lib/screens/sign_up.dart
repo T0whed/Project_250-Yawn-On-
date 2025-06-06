@@ -111,15 +111,12 @@ class _SignUpPageState extends State<SignUpPage> {
         isError: false,
       );
 
-      // Navigate to welcome screen after a short delay
-      Future.delayed(Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => WelcomeScreen()),
-          );
-        }
-      });
+      // Navigate to welcome screen immediately after account creation
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/welcome',
+        (route) => false,
+      );
 
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e.code);
@@ -145,6 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'createdAt': FieldValue.serverTimestamp(),
         'emailVerified': false,
         'profileCompleted': false,
+        'isNewUser': true,
         // Add sleep tracking related fields
         'sleepGoal': 8, // Default 8 hours
         'bedtimeReminder': true,

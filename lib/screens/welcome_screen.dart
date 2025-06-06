@@ -1,4 +1,6 @@
-// screens/welcome_screen.dart
+// Updated welcome_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../screens/home_page.dart';
 
@@ -28,7 +30,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Color.fromRGBO(255, 255, 255, 0.2),
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Icon(
@@ -55,7 +57,7 @@ class WelcomeScreen extends StatelessWidget {
                   'Your journey to better sleep starts now. Let\'s help you build healthy sleep habits and track your progress.',
                   style: TextStyle(
                     fontSize: 18,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Color.fromRGBO(255, 255, 255, 0.9),
                     height: 1.5,
                   ),
                   textAlign: TextAlign.center,
@@ -67,12 +69,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => HomePage()),
-                      );
-                    },
+                    onPressed: () => _completeWelcome(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Color(0xFF1E3A8A),
@@ -95,6 +92,24 @@ class WelcomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _completeWelcome(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Update user document to mark as no longer new
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'isNewUser': false});
+    }
+    
+    // Navigate to home page
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/home',
+      (route) => false,
     );
   }
 }

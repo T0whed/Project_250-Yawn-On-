@@ -10,6 +10,7 @@
         "cloud_firestore",
         "cupertino_icons",
         "firebase_auth",
+        "firebase_core",
         "flutter"
       ],
       "devDependencies": [
