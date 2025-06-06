@@ -1,5 +1,6 @@
 // widgets/top_bar.dart
 import 'package:flutter/material.dart';
+import '../screens/settings_page.dart';
 
 class TopBar extends StatelessWidget {
   @override
@@ -30,10 +31,25 @@ class TopBar extends StatelessWidget {
               color: Colors.grey[600],
             ),
           ),
-          Icon(
-            Icons.settings,
-            color: Colors.grey[600],
-            size: 24,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+            child: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.settings,
+                color: Colors.grey[600],
+                size: 24,
+              ),
+            ),
           ),
         ],
       ),

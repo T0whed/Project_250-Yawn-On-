@@ -1,8 +1,10 @@
 // main.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:yawn_on/firebase_options.dart';
+import 'package:yawn_on/screens/settings_page.dart';
 import 'package:yawn_on/screens/sign_up.dart';
 import 'package:yawn_on/screens/welcome_screen.dart';
 import 'screens/home_page.dart';
@@ -31,6 +33,7 @@ class YawnOnApp extends StatelessWidget {
         '/signup': (context) => SignUpPage(),
         '/home': (context) => HomePage(),
         '/welcome': (context) => WelcomeScreen(),
+        '/settings': (context) => SettingsPage(),
       },
     );
   }
@@ -49,7 +52,29 @@ class AuthWrapper extends StatelessWidget {
         
         // If user is logged in
         if (snapshot.hasData && snapshot.data != null) {
-          return HomePage();
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(snapshot.data!.uid)
+                .get(),
+            builder: (context, userDoc) {
+              if (userDoc.connectionState == ConnectionState.waiting) {
+                return SplashScreen();
+              }
+              
+              // Check if user is new
+              if (userDoc.hasData && userDoc.data!.exists) {
+                Map<String, dynamic> userData = userDoc.data!.data() as Map<String, dynamic>;
+                bool isNewUser = userData['isNewUser'] ?? false;
+                
+                if (isNewUser) {
+                  return WelcomeScreen();
+                }
+              }
+              
+              return HomePage();
+            },
+          );
         }
         
         // If user is not logged in, show sign in page
@@ -77,7 +102,7 @@ class SplashScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Color.fromRGBO(0, 0, 0, 0.2),
                     blurRadius: 20,
                     offset: Offset(0, 10),
                   ),
@@ -106,7 +131,7 @@ class SplashScreen extends StatelessWidget {
               'Track your sleep journey',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
+                color: Color.fromRGBO(255, 255, 255, 0.8),
               ),
             ),
             SizedBox(height: 40),

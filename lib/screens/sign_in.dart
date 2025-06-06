@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import 'sign_up.dart';
-import 'home_page.dart';
 
 class SignInPage extends StatefulWidget {
   @override
@@ -55,10 +54,10 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      // UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      //   email: _emailController.text.trim(),
+      //   password: _passwordController.text,
+      // );
 
       _showSnackBar('Welcome back!', isError: false);
       
