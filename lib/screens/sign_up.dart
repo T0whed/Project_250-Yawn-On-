@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:yawn_on/screens/sign_in.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
-import 'welcome_screen.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
